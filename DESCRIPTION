@@ -1,0 +1,15 @@
+Package: implicitcf
+Type: Package
+Title: Collaborative Filtering for Implicit Feedback Datasets
+Version: 0.1
+Date: 2016-01-16
+Authors@R: as.person(
+    "Andrew J. Landgraf <andland@gmail.com> [aut, cre]")
+Description: Implements Hu, Volinsky, & Koren's (2008) algorithm for recommending
+  items to users with implicit feedback data.
+License: MIT
+URL: https://github.com/andland/implicitcf
+Imports:
+    Matrix
+LazyData: TRUE
+RoxygenNote: 5.0.1
