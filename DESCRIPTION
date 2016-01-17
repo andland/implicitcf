@@ -11,5 +11,7 @@ License: MIT + file LICENSE
 URL: https://github.com/andland/implicitcf
 Imports:
     Matrix
+Suggests:
+    foreach
 LazyData: TRUE
 RoxygenNote: 5.0.1

@@ -11,6 +11,8 @@
 #' @param lambda The L2 squared norm penalty on the latent row and column features
 #' @param init_stdv Standard deviation to initialize the latent row and column features
 #' @param max_iters How many iterations to run the algorithm for
+#' @param parallel Whether to use \code{foreach} package to parallelize the computation.
+#'    See the example for how to use. Does not work for Windows.
 #' @param quiet Whether or not to print out progress
 #'
 #' @return An S3 object of class \code{implicitcf} which is a list with the following components:
@@ -46,11 +48,18 @@
 #'  # should be decreasing
 #'  plot(icf$loss_trace)
 #'
+#'  # to use parallel
+#'  \dontrun{
+#'  require(doMC)
+#'  registerDoMC(cores = parallel::detectCores())
+#'  icf = implicitcf(R, f = 2, alpha = 1, lambda = 0.1, quiet = FALSE, parallel = TRUE)
+#'  }
+#'
 #' @export
 implicitcf <- function(R, alpha = 1, C1 = alpha * R, P = (R > 0) * 1,
                        f = 10, lambda = 0,
                        init_stdv = ifelse(lambda == 0, 0.01, 1 / sqrt(2 * lambda)),
-                       max_iters = 10, quiet = TRUE) {
+                       max_iters = 10, quiet = TRUE, parallel = FALSE) {
   # check R, C1, and P dimensions and 0's match up
   stopifnot(all(dim(C1) == dim(P)))
   if (!all(which(C1 > 0) == which(P > 0))) {
@@ -66,6 +75,14 @@ implicitcf <- function(R, alpha = 1, C1 = alpha * R, P = (R > 0) * 1,
   # R doesn't need to be specified as long as C1 and P are
   if (!missing(R)) {
     rm(R)
+  }
+
+  if (parallel) {
+    if (!requireNamespace("foreach", quietly = TRUE)) {
+      warning("foreach package not installed. Setting parallel = FALSE.\n",
+              "Install foreach package to use parallel.")
+      parallel = FALSE
+    }
   }
 
   nrows = nrow(P)
