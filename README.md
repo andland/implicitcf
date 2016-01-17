@@ -9,5 +9,5 @@ To install R, visit [r-project.org/](http://www.r-project.org/).
 To install the package, first install `devtools` from CRAN. Then run the following commands.
 ```R
 # install.packages("devtools")
-devtools::install_github("andland/generalizedPCA")
+devtools::install_github("andland/implicitcf")
 ```
