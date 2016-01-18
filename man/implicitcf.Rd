@@ -6,7 +6,7 @@
 \usage{
 implicitcf(R, alpha = 1, C1 = alpha * R, P = (R > 0) * 1, f = 10,
   lambda = 0, init_stdv = ifelse(lambda == 0, 0.01, 1/sqrt(2 * lambda)),
-  max_iters = 10, quiet = TRUE)
+  max_iters = 10, parallel = FALSE, quiet = TRUE)
 }
 \arguments{
 \item{R}{A sparse implicit feedback matrix, where the rows typically represent users
@@ -27,6 +27,9 @@ if \code{C1} is not specified}
 \item{init_stdv}{Standard deviation to initialize the latent row and column features}
 
 \item{max_iters}{How many iterations to run the algorithm for}
+
+\item{parallel}{Whether to use \code{foreach} package to parallelize the computation.
+See the example for how to use. Does not work for Windows.}
 
 \item{quiet}{Whether or not to print out progress}
 }
@@ -52,17 +55,30 @@ This function impliments the algorithm of Hu et al. (2008) in R using sparse mat
   Since implicit feedback data is typically sparse, the algorithm and this code are optimized
   take advantage of the sparsity. That being said, the algorithm involves looping over
   the rows and columns of the matrix, which R is slow at.
+
+  To curtail this, I have implemented
+  a parallel option using the \code{foreach} package. It speeds up calculations when there
+  are large numbers of rows and columns.
 }
 \examples{
- X = matrix(rnorm(10 * 2, 0, 1), 10, 2)
- Y = matrix(rnorm(5 * 2, 0, 2), 5, 2)
- noise = matrix(rnorm(10 * 5, 0, 0.5), 10, 5)
+ rows = 20
+ cols = 10
+ X = matrix(rnorm(rows * 2, 0, 1), rows, 2)
+ Y = matrix(rnorm(cols * 2, 0, 2), cols, 2)
+ noise = matrix(rnorm(rows * cols, 0, 0.5), rows, cols)
  R = round(pmax(tcrossprod(X, Y) + noise, 0))
 
  icf = implicitcf(R, f = 2, alpha = 1, lambda = 0.1, quiet = FALSE)
 
  # should be decreasing
  plot(icf$loss_trace)
+
+ # to use parallel
+ \dontrun{
+ library(doMC)
+ registerDoMC(cores = parallel::detectCores())
+ icf = implicitcf(R, f = 2, alpha = 1, lambda = 0.1, quiet = FALSE, parallel = TRUE)
+ }
 
 }
 \references{

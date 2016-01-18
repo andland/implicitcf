@@ -33,14 +33,20 @@
 #'   take advantage of the sparsity. That being said, the algorithm involves looping over
 #'   the rows and columns of the matrix, which R is slow at.
 #'
+#'   To curtail this, I have implemented
+#'   a parallel option using the \code{foreach} package. It speeds up calculations when there
+#'   are large numbers of rows and columns.
+#'
 #' @references
 #' Hu, Y., Koren, Y., Volinsky, C., 2008. Collaborative filtering for implicit feedback datasets.
 #' In Data Mining, 2008. ICDM'08. Eighth IEEE International Conference on (pp. 263-272). IEEE.
 #'
 #' @examples
-#'  X = matrix(rnorm(10 * 2, 0, 1), 10, 2)
-#'  Y = matrix(rnorm(5 * 2, 0, 2), 5, 2)
-#'  noise = matrix(rnorm(10 * 5, 0, 0.5), 10, 5)
+#'  rows = 20
+#'  cols = 10
+#'  X = matrix(rnorm(rows * 2, 0, 1), rows, 2)
+#'  Y = matrix(rnorm(cols * 2, 0, 2), cols, 2)
+#'  noise = matrix(rnorm(rows * cols, 0, 0.5), rows, cols)
 #'  R = round(pmax(tcrossprod(X, Y) + noise, 0))
 #'
 #'  icf = implicitcf(R, f = 2, alpha = 1, lambda = 0.1, quiet = FALSE)
@@ -50,7 +56,7 @@
 #'
 #'  # to use parallel
 #'  \dontrun{
-#'  require(doMC)
+#'  library(doMC)
 #'  registerDoMC(cores = parallel::detectCores())
 #'  icf = implicitcf(R, f = 2, alpha = 1, lambda = 0.1, quiet = FALSE, parallel = TRUE)
 #'  }
@@ -59,7 +65,7 @@
 implicitcf <- function(R, alpha = 1, C1 = alpha * R, P = (R > 0) * 1,
                        f = 10, lambda = 0,
                        init_stdv = ifelse(lambda == 0, 0.01, 1 / sqrt(2 * lambda)),
-                       max_iters = 10, quiet = TRUE, parallel = FALSE) {
+                       max_iters = 10, parallel = FALSE, quiet = TRUE) {
   # check R, C1, and P dimensions and 0's match up
   stopifnot(all(dim(C1) == dim(P)))
   if (!all(which(C1 > 0) == which(P > 0))) {
@@ -104,29 +110,56 @@ implicitcf <- function(R, alpha = 1, C1 = alpha * R, P = (R > 0) * 1,
     }
 
     YtY = Matrix::crossprod(Y)
-    for (u in 1:nrows) {
-      # TODO: compare diag(C1[u, ]) to Diagonal(x = C1[u, ]) since Diagonal keeps 0's
-      inv = YtY + Matrix::t(Y) %*% diag(C1[u, ]) %*% Y + Lambda
+    if (parallel) {
+      X = foreach::`%dopar%`(
+        foreach::foreach(u = 1:nrows, .combine = rbind),
+        {
+          inv = YtY + Matrix::t(Y) %*% diag(C1[u, ]) %*% Y + Lambda
+          rhs = Matrix::t(Y) %*% CP[u, ]
+          Matrix::t(Matrix::solve(inv, rhs))
+        }
+      )
+    } else {
+      for (u in 1:nrows) {
+        # TODO: compare diag(C1[u, ]) to Diagonal(x = C1[u, ]) since Diagonal keeps 0's
+        inv = YtY + Matrix::t(Y) %*% diag(C1[u, ]) %*% Y + Lambda
 
-      # TODO: compare to rhs = t(Y) %*% CP[u, ], to make sure it gives same results
-      # rhs = t(Y) %*% diag(C1[u, ] + 1) %*% P[u, ]
-      rhs = Matrix::t(Y) %*% CP[u, ]
+        # TODO: compare to rhs = t(Y) %*% CP[u, ], to make sure it gives same results
+        # rhs = t(Y) %*% diag(C1[u, ] + 1) %*% P[u, ]
+        rhs = Matrix::t(Y) %*% CP[u, ]
 
-      x = Matrix::solve(inv, rhs)
-      X[u, ] = as.numeric(x)
+        x = Matrix::solve(inv, rhs)
+        X[u, ] = as.numeric(x)
+      }
     }
 
     XtX = Matrix::crossprod(X)
-    for (i in 1:ncols) {
-      # TODO: compare diag(C1[, i]) to Diagonal(x = C1[, i]) since Diagonal keeps 0's
-      inv = XtX + Matrix::t(X) %*% diag(C1[, i]) %*% X + Lambda
+    if (parallel) {
+#       Y = foreach::foreach(i = 1:ncols, .combine = rbind) %dopar% {
+#         inv = XtX + Matrix::t(X) %*% diag(C1[, i]) %*% X + Lambda
+#         rhs = Matrix::t(X) %*% CP[, i]
+#         Matrix::t(Matrix::solve(inv, rhs))
+#       }
+      Y = foreach::`%dopar%`(
+        foreach::foreach(i = 1:ncols, .combine = rbind),
+        {
+          inv = XtX + Matrix::t(X) %*% diag(C1[, i]) %*% X + Lambda
+          rhs = Matrix::t(X) %*% CP[, i]
+          Matrix::t(Matrix::solve(inv, rhs))
+        }
+      )
+    } else {
+      for (i in 1:ncols) {
+        # TODO: compare diag(C1[, i]) to Diagonal(x = C1[, i]) since Diagonal keeps 0's
+        inv = XtX + Matrix::t(X) %*% diag(C1[, i]) %*% X + Lambda
 
-      # TODO: compare to rhs = t(X) %*% CP[, i], to make sure it gives same results
-      # rhs = t(X) %*% diag(C1[, i] + 1) %*% P[, i]
-      rhs = Matrix::t(X) %*% CP[, i]
+        # TODO: compare to rhs = t(X) %*% CP[, i], to make sure it gives same results
+        # rhs = t(X) %*% diag(C1[, i] + 1) %*% P[, i]
+        rhs = Matrix::t(X) %*% CP[, i]
 
-      y = Matrix::solve(inv, rhs)
-      Y[i, ] = as.numeric(y)
+        y = Matrix::solve(inv, rhs)
+        Y[i, ] = as.numeric(y)
+      }
     }
 
     loss_trace[iter] = sum((C1 + 1) * (P - Matrix::tcrossprod(X, Y))^2) + lambda * (sum(X^2) + sum(Y^2))
