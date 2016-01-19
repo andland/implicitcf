@@ -73,11 +73,9 @@ implicitcf <- function(R, alpha = 1, C1 = alpha * R, P = (R > 0) * 1,
                        f = 10, lambda = 0,
                        init_stdv = ifelse(lambda == 0, 0.01, 1 / sqrt(2 * lambda)),
                        max_iters = 10, parallel = FALSE, quiet = TRUE) {
-  # check R, C1, and P dimensions and 0's match up
+  # check C1 and P dimensions
   stopifnot(all(dim(C1) == dim(P)))
-  if (!all(which(C1 > 0) == which(P > 0))) {
-    warning("non-zero elements of C1 and P do not match. This could cause issues in the algorithm")
-  }
+
   # C1, and P are sparseMatrix class
   if (!inherits(C1, "sparseMatrix")) {
     C1 = Matrix::Matrix(C1, sparse = TRUE)
@@ -85,6 +83,12 @@ implicitcf <- function(R, alpha = 1, C1 = alpha * R, P = (R > 0) * 1,
   if (!inherits(P, "sparseMatrix")) {
     P = Matrix::Matrix(P, sparse = TRUE)
   }
+
+  # check C1 and P 0's match up
+  if (!all(Matrix::which(C1 > 0) == Matrix::which(P > 0))) {
+    warning("non-zero elements of C1 and P do not match. This could cause issues in the algorithm")
+  }
+
   # R doesn't need to be specified as long as C1 and P are
   if (!missing(R)) {
     rm(R)
