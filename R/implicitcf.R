@@ -35,7 +35,10 @@
 #'
 #'   To curtail this, I have implemented
 #'   a parallel option using the \code{foreach} package. It speeds up calculations when there
-#'   are large numbers of rows and columns.
+#'   are a decent number of rows or columns (e.g. > 100).
+#'
+#'   This algorithm also should not have any memory issues because the only inversion is
+#'   of an \code{f} dimensional matrix and sparse matrices are used throughout.
 #'
 #' @references
 #' Hu, Y., Koren, Y., Volinsky, C., 2008. Collaborative filtering for implicit feedback datasets.
