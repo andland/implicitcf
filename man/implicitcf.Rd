@@ -29,7 +29,7 @@ if \code{C1} is not specified}
 \item{max_iters}{How many iterations to run the algorithm for}
 
 \item{parallel}{Whether to use \code{foreach} package to parallelize the computation.
-See the example for how to use. Does not work for Windows.}
+See the example for how to use.}
 
 \item{quiet}{Whether or not to print out progress}
 }
@@ -61,23 +61,30 @@ This function impliments the algorithm of Hu et al. (2008) in R using sparse mat
   are large numbers of rows and columns.
 }
 \examples{
- rows = 20
- cols = 10
- X = matrix(rnorm(rows * 2, 0, 1), rows, 2)
- Y = matrix(rnorm(cols * 2, 0, 2), cols, 2)
- noise = matrix(rnorm(rows * cols, 0, 0.5), rows, cols)
- R = round(pmax(tcrossprod(X, Y) + noise, 0))
+ rows <- 20
+ cols <- 10
+ X <- matrix(rnorm(rows * 2, 0, 1), rows, 2)
+ Y <- matrix(rnorm(cols * 2, 0, 2), cols, 2)
+ noise <- matrix(rnorm(rows * cols, 0, 0.5), rows, cols)
+ R <- round(pmax(tcrossprod(X, Y) + noise, 0))
 
- icf = implicitcf(R, f = 2, alpha = 1, lambda = 0.1, quiet = FALSE)
+ icf <- implicitcf(R, f = 2, alpha = 1, lambda = 0.1, quiet = FALSE)
 
  # should be decreasing
  plot(icf$loss_trace)
 
- # to use parallel
  \dontrun{
+ # to use parallel on Mac/Linux
  library(doMC)
- registerDoMC(cores = parallel::detectCores())
- icf = implicitcf(R, f = 2, alpha = 1, lambda = 0.1, quiet = FALSE, parallel = TRUE)
+ registerDoMC(cores <- parallel::detectCores())
+ icf <- implicitcf(R, f = 2, alpha = 1, lambda = 0.1, quiet = FALSE, parallel = TRUE)
+
+ # to use parallel on Windows
+ library(doParallel)
+ cl <- makeCluster(parallel::detectCores())
+ registerDoParallel(cl)
+ icf <- implicitcf(R, f = 2, alpha = 1, lambda = 0.1, quiet = FALSE, parallel = TRUE)
+ stopCluster(cl)
  }
 
 }
